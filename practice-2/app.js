@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const cors = require("cors");
 const { nanoid } = require("nanoid");
 const swaggerJsdoc = require("swagger-jsdoc");
@@ -40,6 +41,9 @@ app.use(
   })
 );
 
+// статика: картинки доступны по /img/...
+app.use("/img", express.static(path.join(__dirname, "img")));
+
 // Логирование (как в методичке)
 app.use((req, res, next) => {
   res.on("finish", () => {
@@ -51,6 +55,8 @@ app.use((req, res, next) => {
   next();
 });
 
+
+
 // ===== "База" в памяти: 10 товаров =====
 let products = [
   {
@@ -61,6 +67,7 @@ let products = [
     price: 1490,
     stock: 34,
     rating: 4.6,
+    image: "/img/p1.jpg",
   },
   {
     id: nanoid(6),
@@ -70,6 +77,7 @@ let products = [
     price: 4990,
     stock: 12,
     rating: 4.7,
+    image: "/img/p2.jpg",
   },
   {
     id: nanoid(6),
@@ -79,6 +87,7 @@ let products = [
     price: 3590,
     stock: 18,
     rating: 4.4,
+    image: "/img/p3.jpg",
   },
   {
     id: nanoid(6),
@@ -88,6 +97,7 @@ let products = [
     price: 12990,
     stock: 9,
     rating: 4.5,
+    image: "/img/p4.jpg",
   },
   {
     id: nanoid(6),
@@ -97,6 +107,7 @@ let products = [
     price: 8990,
     stock: 22,
     rating: 4.8,
+    image: "/img/p5.jpg",
   },
   {
     id: nanoid(6),
@@ -106,6 +117,7 @@ let products = [
     price: 28990,
     stock: 6,
     rating: 4.3,
+    image: "/img/p6.jpg",
   },
   {
     id: nanoid(6),
@@ -115,6 +127,7 @@ let products = [
     price: 4590,
     stock: 40,
     rating: 4.7,
+    image: "/img/p7.jpg",
   },
   {
     id: nanoid(6),
@@ -124,6 +137,7 @@ let products = [
     price: 5990,
     stock: 15,
     rating: 4.5,
+    image: "/img/p8.jpg",
   },
   {
     id: nanoid(6),
@@ -133,6 +147,7 @@ let products = [
     price: 2790,
     stock: 25,
     rating: 4.2,
+    image: "/img/p9.jpg",
   },
   {
     id: nanoid(6),
@@ -142,6 +157,7 @@ let products = [
     price: 790,
     stock: 60,
     rating: 4.6,
+    image: "/img/p10.jpg"
   },
 ];
 
@@ -177,6 +193,11 @@ function validateProductPayload(payload, { partial = false } = {}) {
   }
   if (has("rating")) {
     if (typeof payload.rating !== "number" || payload.rating < 0 || payload.rating > 5) errors.push("rating must be 0..5");
+  }
+  if (has("image")) {
+    if (payload.image !== null && payload.image !== undefined && typeof payload.image !== "string") {
+      errors.push("image must be a string or null");
+    }
   }
 
   return errors;
@@ -217,6 +238,10 @@ function validateProductPayload(payload, { partial = false } = {}) {
  *           type: number
  *           nullable: true
  *           description: Рейтинг 0..5
+ *         image:
+ *           type: string
+ *           nullable: true
+ *           description: Ссылка на картинку (URL)
  *       example:
  *         id: "a1b2c3"
  *         name: "SSD 1TB"
@@ -225,6 +250,7 @@ function validateProductPayload(payload, { partial = false } = {}) {
  *         price: 8990
  *         stock: 22
  *         rating: 4.8
+ *         image: "https://picsum.photos/300"
  */
 
 // ===== Routes =====
@@ -318,6 +344,7 @@ app.post("/api/products", (req, res) => {
     price: req.body.price,
     stock: req.body.stock,
     rating: req.body.rating ?? null,
+    image: req.body.image?.trim() ? req.body.image.trim() : null,
   };
 
   products.push(newProduct);
@@ -357,6 +384,9 @@ app.post("/api/products", (req, res) => {
  *               rating:
  *                 type: number
  *                 nullable: true
+ *               image:
+ *                 type: string
+ *                 nullable: true
  *     responses:
  *       200:
  *         description: Товар обновлён
@@ -379,7 +409,8 @@ app.patch("/api/products/:id", (req, res) => {
     req.body?.description === undefined &&
     req.body?.price === undefined &&
     req.body?.stock === undefined &&
-    req.body?.rating === undefined
+    req.body?.rating === undefined && 
+    req.body?.image === undefined
   ) {
     return res.status(400).json({ error: "Nothing to update" });
   }
@@ -393,6 +424,7 @@ app.patch("/api/products/:id", (req, res) => {
   if (req.body.price !== undefined) product.price = req.body.price;
   if (req.body.stock !== undefined) product.stock = req.body.stock;
   if (req.body.rating !== undefined) product.rating = req.body.rating;
+  if (req.body.image !== undefined) product.image = req.body.image?.trim() ? req.body.image.trim() : null;
 
   res.json(product);
 });

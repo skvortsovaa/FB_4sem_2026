@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 export default function ProductModal({ open, mode, initialProduct, onClose, onSubmit }) {
   const [name, setName] = useState("");
@@ -7,6 +7,7 @@ export default function ProductModal({ open, mode, initialProduct, onClose, onSu
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
   const [rating, setRating] = useState("");
+  const [image, setImage] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -17,11 +18,18 @@ export default function ProductModal({ open, mode, initialProduct, onClose, onSu
     setPrice(initialProduct?.price != null ? String(initialProduct.price) : "");
     setStock(initialProduct?.stock != null ? String(initialProduct.stock) : "");
     setRating(initialProduct?.rating != null ? String(initialProduct.rating) : "");
+    setImage(initialProduct?.image ?? "");
   }, [open, initialProduct]);
 
-  if (!open) return null;
-
   const title = mode === "edit" ? "Редактирование товара" : "Создание товара";
+
+  const previewUrl = useMemo(() => {
+    const v = (image ?? "").trim();
+    if (!v) return null;
+    // поддержка обычных URL + data:image/... (если вдруг)
+    if (v.startsWith("http://") || v.startsWith("https://") || v.startsWith("data:image/")) return v;
+    return null;
+  }, [image]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -29,6 +37,7 @@ export default function ProductModal({ open, mode, initialProduct, onClose, onSu
     const trimmedName = name.trim();
     const trimmedCat = category.trim();
     const trimmedDesc = description.trim();
+    const trimmedImage = image.trim();
 
     const parsedPrice = Number(price);
     const parsedStock = Number(stock);
@@ -39,12 +48,20 @@ export default function ProductModal({ open, mode, initialProduct, onClose, onSu
     if (!trimmedDesc) return alert("Введите описание");
 
     if (!Number.isFinite(parsedPrice) || parsedPrice < 0) return alert("Цена должна быть числом >= 0");
-    if (!Number.isInteger(parsedStock) || parsedStock < 0) return alert("Количество на складе должно быть целым числом >= 0");
+    if (!Number.isInteger(parsedStock) || parsedStock < 0) {
+      return alert("Количество на складе должно быть целым числом >= 0");
+    }
 
     if (parsedRating !== null) {
       if (!Number.isFinite(parsedRating) || parsedRating < 0 || parsedRating > 5) {
         return alert("Рейтинг должен быть числом от 0 до 5");
       }
+    }
+
+    // image: либо URL, либо пусто/null (тут мы делаем "только ссылка" — не /img/...)
+    if (trimmedImage) {
+      const ok = trimmedImage.startsWith("http://") || trimmedImage.startsWith("https://");
+      if (!ok) return alert("Ссылка на фото должна начинаться с http:// или https://");
     }
 
     onSubmit({
@@ -55,8 +72,11 @@ export default function ProductModal({ open, mode, initialProduct, onClose, onSu
       price: parsedPrice,
       stock: parsedStock,
       rating: parsedRating,
+      image: trimmedImage || null,
     });
   };
+
+  if (!open) return null;
 
   return (
     <div className="backdrop" onMouseDown={onClose}>
@@ -104,6 +124,31 @@ export default function ProductModal({ open, mode, initialProduct, onClose, onSu
             Рейтинг (0–5, можно пусто)
             <input className="input" inputMode="decimal" value={rating} onChange={(e) => setRating(e.target.value)} />
           </label>
+
+          <label className="label">
+            Ссылка на фото (URL)
+            <input
+              className="input"
+              value={image}
+              onChange={(e) => setImage(e.target.value)}
+              placeholder="https://example.com/photo.jpg"
+            />
+          </label>
+
+          {previewUrl && (
+            <div className="imgPreview">
+              <img
+                src={previewUrl}
+                alt="preview"
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  // если ссылка битая — просто скрываем превью
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            </div>
+          )}
 
           <div className="modal__footer">
             <button type="button" className="btn" onClick={onClose}>
